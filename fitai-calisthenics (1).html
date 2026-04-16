@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FITAI PRO | CaliTree & Nutrition</title>
+    <style>
+        :root {
+            --primary: #ff6a00; --primary-glow: rgba(255,106,0,0.3);
+            --bg-dark: #0a0a0a; --bg-card: rgba(20,20,20,0.8); --bg-input: rgba(30,30,30,0.9);
+            --text-main: #fff; --text-muted: #9e9e9e; --glass-border: rgba(255,255,255,0.05);
+            --radius-lg: 24px; --radius-md: 16px; --danger: #ff4b2b; --safe: #00d2ff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-dark); color: var(--text-main); overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+
+        #onboarding-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#111,#000); z-index:2000; display:flex; flex-direction:column; padding:40px 24px; transition:0.8s ease; overflow-y:auto; }
+        .progress-bar-container { width:100%; background:rgba(255,255,255,0.1); height:8px; border-radius:10px; margin-bottom:30px; }
+        #progress-fill { width:0%; height:100%; background:var(--primary); border-radius:10px; transition:0.5s ease; box-shadow:0 0 15px var(--primary-glow); }
+        #question-box { flex-grow:1; display:flex; flex-direction:column; justify-content:center; min-height:50vh; }
+        .q-title { font-size:26px; font-weight:900; color:var(--primary); margin-bottom:12px; line-height:1.3; }
+        .q-sub { font-size:14px; color:var(--text-muted); margin-bottom:30px; }
+        input, select { width:100%; padding:18px; background:var(--bg-input); border:1px solid #333; color:white; border-radius:var(--radius-md); font-size:16px; margin-bottom:20px; font-family:inherit; }
+        input:focus, select:focus { border-color:var(--primary); outline:none; }
+        .options-list { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-bottom:20px; }
+        .option-item { background:var(--bg-input); border:2px solid #222; padding:15px; border-radius:var(--radius-md); cursor:pointer; text-align:center; transition:0.3s; font-size:14px; font-weight:800; }
+        .option-item.selected { border-color:var(--primary); background:var(--primary-glow); color:var(--primary); }
+        .btn-wiz { padding:18px; border-radius:var(--radius-md); border:none; font-size:16px; font-weight:900; cursor:pointer; font-family:inherit; }
+        .btn-next { background:var(--primary); color:#000; flex:2; }
+        .btn-prev { background:#222; color:#fff; flex:1; }
+        .wiz-footer { display:flex; gap:10px; margin-top:20px; flex-shrink:0; padding-bottom:20px; }
+
+        #main-app { display:none; opacity:0; transition:opacity 0.8s; min-height:100vh; padding-bottom:80px; }
+        header { padding:20px 24px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); z-index:100; border-bottom:1px solid #222; position:sticky; top:0; }
+        .content { padding:20px; max-width:600px; margin:0 auto; }
+        .card { background:var(--bg-card); border-radius:var(--radius-lg); padding:25px; margin-bottom:20px; border:1px solid var(--glass-border); }
+        .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px; }
+        .stat-box { background:rgba(0,0,0,0.4); padding:20px; border-radius:var(--radius-md); text-align:center; border:1px solid var(--glass-border); }
+        .stat-val { font-size:26px; font-weight:900; color:var(--primary); }
+        .log-inputs { display:flex; gap:10px; margin-bottom:15px; }
+        .log-inputs input { margin-bottom:0; padding:15px; font-size:16px; }
+        .food-item { background:rgba(0,0,0,0.4); padding:15px; border-radius:12px; margin-bottom:10px; border-right:2px solid rgba(255,255,255,0.1); font-size:14px; }
+        .meal-item { background:linear-gradient(135deg,var(--primary-glow),rgba(0,0,0,0.6)); padding:20px; border-radius:var(--radius-md); margin-bottom:12px; border:1px solid var(--primary); font-size:15px; }
+
+        #tree-container { display:flex; flex-direction:column-reverse; align-items:center; position:relative; padding:40px 0; background:linear-gradient(to top,#3e2723 0%,#1a1a1a 40%,#1b5e20 100%); border-radius:var(--radius-lg); border:2px solid #333; overflow:hidden; box-shadow:inset 0 0 50px rgba(0,0,0,0.8); margin-bottom:20px; }
+        #tree-container::before { content:''; position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); width:8px; background:rgba(255,255,255,0.1); z-index:1; }
+        #tree-progress { position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:8px; background:var(--primary); z-index:2; transition:height 1s ease; box-shadow:0 0 15px var(--primary); height:0%; }
+        .tree-node { position:relative; z-index:3; display:flex; flex-direction:column; align-items:center; width:100%; margin-bottom:50px; text-align:center; opacity:0.4; filter:grayscale(1); transition:0.5s; }
+        .tree-node:last-child { margin-bottom:0; }
+        .tree-node.unlocked { opacity:1; filter:grayscale(0); transform:scale(1.05); }
+        .node-icon { width:70px; height:70px; border-radius:50%; background:#111; border:3px solid #444; display:flex; justify-content:center; align-items:center; font-size:30px; margin-bottom:10px; box-shadow:0 5px 15px rgba(0,0,0,0.5); z-index:4; }
+        .tree-node.unlocked .node-icon { border-color:var(--primary); background:var(--bg-dark); box-shadow:0 0 20px var(--primary-glow); }
+        .node-details { background:rgba(0,0,0,0.7); padding:10px 15px; border-radius:12px; border:1px solid #333; width:80%; }
+        .node-title { font-size:18px; font-weight:900; color:#fff; margin-bottom:2px; }
+        .tree-node.unlocked .node-title { color:var(--primary); }
+        .node-req { font-size:12px; color:var(--text-muted); font-weight:bold; }
+
+        .ex-item { background:rgba(0,0,0,0.6); padding:18px; border-radius:12px; margin-bottom:10px; border-right:4px solid var(--primary); display:flex; flex-direction:column; }
+        .ex-item.static { border-right-color:#ff2a5f; }
+        .ex-content { display:flex; justify-content:space-between; align-items:center; width:100%; }
+        .ex-toggle { margin-top:10px; font-size:12px; color:var(--primary); cursor:pointer; display:inline-block; font-weight:bold; }
+        .ex-explanation { display:none; margin-top:10px; padding:12px; background:rgba(0,0,0,0.4); border-radius:8px; font-size:13px; color:#ccc; line-height:1.5; border-right:2px solid var(--primary); }
+
+        #unlock-modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:3000; display:none; flex-direction:column; justify-content:center; align-items:center; opacity:0; transition:opacity 0.5s; text-align:center; padding:20px; }
+        .graphic-container { width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,var(--primary),transparent 70%); display:flex; justify-content:center; align-items:center; font-size:80px; box-shadow:0 0 50px var(--primary); margin-bottom:30px; animation:pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.1);box-shadow:0 0 80px var(--primary);} }
+        .unlock-title { font-size:36px; font-weight:900; color:#fff; letter-spacing:2px; margin-bottom:10px; }
+        .unlock-sub { font-size:18px; color:var(--primary); margin-bottom:25px; font-weight:bold; }
+
+        nav.bottom-nav { position:fixed; bottom:0; width:100%; background:rgba(10,10,10,0.95); display:flex; justify-content:space-around; padding:12px 0; border-top:1px solid #222; padding-bottom:env(safe-area-inset-bottom,12px); z-index:1000; backdrop-filter:blur(10px); }
+        .nav-link { background:none; border:none; color:#555; font-size:11px; display:flex; flex-direction:column; align-items:center; gap:4px; font-weight:900; cursor:pointer; transition:0.3s; font-family:inherit; }
+        .nav-link.active { color:var(--primary); transform:translateY(-3px); }
+        label { font-size:13px; color:var(--text-muted); display:block; margin-bottom:8px; }
+    </style>
+</head>
+<body>
+
+    <div id="onboarding-screen">
+        <div class="progress-bar-container"><div id="progress-fill"></div></div>
+        <div id="step-info" style="font-size:13px;color:var(--primary);margin-bottom:5px;font-weight:bold;"></div>
+        <div id="question-box"></div>
+        <div class="wiz-footer">
+            <button class="btn-wiz btn-prev" id="btn-prev" onclick="moveStep(-1)">חזור</button>
+            <button class="btn-wiz btn-next" id="btn-next" onclick="moveStep(1)">המשך</button>
+        </div>
+    </div>
+
+    <div id="unlock-modal">
+        <div class="graphic-container" id="unlock-icon">🛸</div>
+        <div class="unlock-title">SKILL UNLOCKED!</div>
+        <div class="unlock-sub" id="unlock-name">FULL PLANCHE</div>
+        <p style="color:#ccc;margin-bottom:30px;font-size:15px;line-height:1.5;padding:0 20px;" id="unlock-desc"></p>
+        <button class="btn-wiz btn-next" style="padding:18px 50px;width:auto;" onclick="closeModal()">המשך לטפס</button>
+    </div>
+
+    <div id="main-app">
+        <header>
+            <div style="font-weight:900;font-size:22px;letter-spacing:1px;">CALI<span style="color:var(--primary);">TREE</span></div>
+            <div style="font-size:11px;font-weight:bold;color:var(--text-main);background:#222;padding:6px 12px;border-radius:20px;border:1px solid #444;">
+                שלב: <span id="header-level" style="color:var(--primary);">אדמה</span>
+            </div>
+        </header>
+        <div class="content">
+
+            <div id="tab-tree" style="display:block;">
+                <div style="text-align:center;margin-bottom:20px;">
+                    <h2 style="font-weight:900;font-size:22px;">עץ המיומנויות</h2>
+                    <p style="font-size:14px;color:var(--text-muted);">סיימת <strong style="color:var(--primary);font-size:18px;" id="ui-workouts-done">0</strong> אימונים.</p>
+                </div>
+                <div id="tree-container"><div id="tree-progress"></div></div>
+            </div>
+
+            <div id="tab-nutrition" style="display:none;">
+                <div class="card" style="border-color:rgba(0,210,255,0.3);box-shadow:0 0 20px rgba(0,210,255,0.1);">
+                    <h2 style="margin-bottom:15px;font-weight:900;">מעקב <b style="color:var(--safe);">מים</b> 💧</h2>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">נשתו היום</div>
+                            <div class="stat-val" id="ui-water" style="color:var(--safe);font-size:24px;">0 / 3 L</div>
+                        </div>
+                        <button onclick="logWater()" style="padding:15px 25px;border-radius:12px;border:none;background:var(--safe);color:#000;font-weight:900;font-size:16px;cursor:pointer;font-family:inherit;">+ כוס</button>
+                    </div>
+                    <div style="width:100%;background:rgba(0,0,0,0.5);height:8px;border-radius:4px;">
+                        <div id="water-progress" style="width:0%;height:100%;background:var(--safe);border-radius:4px;transition:0.3s;box-shadow:0 0 10px var(--safe);"></div>
+                    </div>
+                </div>
+                <div class="card" style="border-color:rgba(255,106,0,0.3);box-shadow:0 0 20px rgba(255,106,0,0.1);">
+                    <h2 style="margin-bottom:15px;font-weight:900;">מעקב <b style="color:var(--primary);">תזונה</b></h2>
+                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px;">מתאפס אוטומטית בחצות.</p>
+                    <div class="stat-grid">
+                        <div class="stat-box"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">חלבון נותר</div><div class="stat-val" id="ui-p">0g</div></div>
+                        <div class="stat-box"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">קלוריות נותרו</div><div class="stat-val" id="ui-c" style="color:#fff;">0</div></div>
+                    </div>
+                    <div class="log-inputs">
+                        <input type="number" id="log-p" placeholder="חלבון (g)">
+                        <input type="number" id="log-c" placeholder="קלוריות">
+                    </div>
+                    <button onclick="logMeal()" style="width:100%;padding:15px;border-radius:var(--radius-md);border:none;background:#333;color:#fff;font-weight:900;cursor:pointer;font-family:inherit;">עדכן יומן +</button>
+                </div>
+                <div class="card">
+                    <button onclick="suggestNutrition()" style="width:100%;padding:20px;border-radius:var(--radius-md);border:none;background:var(--primary);color:#000;font-weight:900;font-size:16px;cursor:pointer;font-family:inherit;box-shadow:0 5px 20px var(--primary-glow);">תפריט מותאם אלרגיות</button>
+                    <div id="food-res" style="display:none;margin-top:20px;">
+                        <h3 style="color:#fff;font-size:15px;margin-bottom:10px;">חומרי גלם נקיים:</h3>
+                        <div id="food-list-container"></div>
+                        <h3 style="color:#fff;font-size:15px;margin-top:20px;margin-bottom:10px;">ארוחות בונות שריר:</h3>
+                        <div id="meal-list-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-workout" style="display:none;">
+                <div class="card">
+                    <h2 style="margin-bottom:10px;font-weight:900;">אימון <span style="color:var(--primary);">סטריט</span></h2>
+                    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">האימון נבנה לפי המיומנויות שפתחת בעץ.</p>
+                    <select id="workout-time-select" style="margin-bottom:20px;padding:15px;font-size:14px;">
+                        <option value="30" selected>30 דקות - מסלול קלאסי</option>
+                        <option value="60">60 דקות - אימון מלא</option>
+                        <option value="90">90 דקות - אקסטרים הארדקור</option>
+                    </select>
+                    <button onclick="generateWorkout()" style="width:100%;padding:20px;border-radius:var(--radius-md);border:none;background:linear-gradient(45deg,var(--primary),#ff9d00);color:#000;font-weight:900;font-size:16px;cursor:pointer;font-family:inherit;box-shadow:0 5px 20px var(--primary-glow);">טען אימון להיום</button>
+                    <div id="workout-res" style="margin-top:30px;"></div>
+                </div>
+            </div>
+
+            <div id="tab-settings" style="display:none;">
+                <div class="card">
+                    <h2 style="margin-bottom:20px;font-weight:900;">הגדרות פרופיל</h2>
+                    <label>משקל (ק"ג):</label>
+                    <input type="number" id="set-weight">
+                    <label>יעד תזונתי:</label>
+                    <select id="set-goal">
+                        <option value="חיטוב (Fat Loss)">חיטוב (Fat Loss)</option>
+                        <option value="מסה (Muscle Gain)">מסה (Muscle Gain)</option>
+                        <option value="כוח ותחזוקה">כוח ותחזוקה</option>
+                    </select>
+                    <label>קצב רצוי לתוצאות:</label>
+                    <select id="set-pace">
+                        <option value="רגיל">קצב רגיל</option>
+                        <option value="אקסטרים">אקסטרים</option>
+                    </select>
+                    <button onclick="saveSettings()" style="width:100%;padding:15px;border-radius:var(--radius-md);border:none;background:#fff;color:#000;font-weight:900;cursor:pointer;font-family:inherit;">שמור נתונים</button>
+                    <button onclick="doReset()" style="width:100%;padding:15px;border-radius:var(--radius-md);border:1px solid var(--danger);background:transparent;color:var(--danger);font-weight:900;margin-top:20px;cursor:pointer;font-family:inherit;">כרות את העץ ומחק נתונים</button>
+                </div>
+            </div>
+
+        </div>
+        <nav class="bottom-nav">
+            <button class="nav-link active" id="nav-tree" onclick="switchTab('tree',this)"><div style="font-size:20px;margin-bottom:2px;">🌳</div>העץ</button>
+            <button class="nav-link" id="nav-nutrition" onclick="switchTab('nutrition',this)"><div style="font-size:20px;margin-bottom:2px;">🍎</div>תזונה</button>
+            <button class="nav-link" id="nav-workout" onclick="switchTab('workout',this)"><div style="font-size:20px;margin-bottom:2px;">🔥</div>אימון</button>
+            <button class="nav-link" id="nav-settings" onclick="switchTab('settings',this)"><div style="font-size:20px;margin-bottom:2px;">⚙️</div>הגדרות</button>
+        </nav>
+    </div>
+
+<script>
+// =============================================
+// RESET & GLOBAL ACTIONS — ראשון בקוד
+// =============================================
+function doReset() {
+    if (confirm('לכרות את העץ ולאפס נתונים?')) { localStorage.clear(); location.reload(); }
+}
+function saveSettings() {
+    var w = document.getElementById('set-weight').value;
+    if (w) appState.ans.weight = w;
+    appState.ans.goal = document.getElementById('set-goal').value;
+    appState.ans.pace = document.getElementById('set-pace').value;
+    saveState(); updateStats(); alert('ההגדרות עודכנו.');
+}
+function switchTab(id, btn) {
+    document.getElementById('tab-tree').style.display      = id==='tree'      ? 'block':'none';
+    document.getElementById('tab-nutrition').style.display = id==='nutrition' ? 'block':'none';
+    document.getElementById('tab-workout').style.display   = id==='workout'   ? 'block':'none';
+    document.getElementById('tab-settings').style.display  = id==='settings'  ? 'block':'none';
+    document.querySelectorAll('.nav-link').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+}
+function closeModal() {
+    var m = document.getElementById('unlock-modal');
+    m.style.opacity = '0';
+    setTimeout(function(){ m.style.display='none'; }, 500);
+    switchTab('tree', document.getElementById('nav-tree'));
+}
+function toggleExp(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = el.style.display === 'none' || el.style.display === '' ? 'block' : 'none';
+}
+function finishWorkout() {
+    appState.workoutsCompleted += 1;
+    var newlyUnlocked = null;
+    TREE_NODES.forEach(function(node) {
+        if (appState.workoutsCompleted >= node.req && appState.unlockedSkills.indexOf(node.id) === -1) {
+            appState.unlockedSkills.push(node.id);
+            newlyUnlocked = node;
+        }
+    });
+    saveState(); renderTree();
+    if (newlyUnlocked) {
+        document.getElementById('unlock-icon').innerText = newlyUnlocked.icon;
+        document.getElementById('unlock-name').innerText = newlyUnlocked.name.toUpperCase();
+        document.getElementById('unlock-desc').innerText = 'הגוף שלך התחזק. ' + newlyUnlocked.desc + ' ישולב באימונים מעכשיו.';
+        var m = document.getElementById('unlock-modal');
+        m.style.display = 'flex';
+        setTimeout(function(){ m.style.opacity='1'; }, 50);
+    } else {
+        alert('אימון הושלם! התקדמת על העץ.');
+        switchTab('tree', document.getElementById('nav-tree'));
+    }
+}
+function generateWorkout() {
+    var ans = appState.ans;
+    var isExtreme = (ans.pace||'').indexOf('אקסטרים') !== -1;
+    var count = isExtreme ? 7 : 5;
+    var hasPullup = ans.gym_access !== 'בית' || ans.has_pullup === 'כן';
+    var hasDips   = ans.gym_access !== 'בית' || ans.has_dips   === 'כן';
+    var available = EXERCISES.filter(function(ex) {
+        if (ex.reqEq==='pullup' && !hasPullup) return false;
+        if (ex.reqEq==='dips'   && !hasDips)   return false;
+        if (appState.unlockedSkills.indexOf(ex.skill)===-1) return false;
+        return true;
+    });
+    var statics = available.filter(function(ex){return ex.type==='static';});
+    var reps    = available.filter(function(ex){return ex.type==='rep';});
+    statics.sort(function(){return 0.5-Math.random();});
+    reps.sort(function(){return 0.5-Math.random();});
+    var sc = Math.min(statics.length, isExtreme ? 2 : 1);
+    var workout = statics.slice(0,sc).concat(reps.slice(0,count-sc));
+    workout.sort(function(){return 0.5-Math.random();});
+    var resDiv = document.getElementById('workout-res');
+    var html = '<div style="background:var(--bg-input);padding:15px;border-radius:12px;margin-bottom:20px;border:1px solid var(--primary);text-align:center;">';
+    html += '<strong style="color:var(--primary);font-size:20px;">אימון סטריט '+(isExtreme?'🔥':'')+'</strong><br>';
+    html += '<span style="font-size:13px;color:var(--text-muted);">כולל הסברים טכניים לביצוע מושלם.</span></div>';
+    workout.forEach(function(ex, i) {
+        var isStatic = ex.type === 'static';
+        var repText = isStatic ? 'החזקה מקסימלית' : (isExtreme ? '12-20 חזרות' : '8-12 חזרות');
+        var sets = isExtreme ? '4 סטים' : '3 סטים';
+        var typeColor = isStatic ? '#ff2a5f' : '#666';
+        var typeLabel = isStatic ? 'כוח סטטי (Skill)' : 'היפרטרופיה';
+        var expId = 'exp-' + i;
+        html += '<div class="ex-item'+(isStatic?' static':'')+'"><div class="ex-content"><div>';
+        html += '<div style="font-weight:900;font-size:16px;color:#fff;">'+(i+1)+'. '+ex.n+'</div>';
+        html += '<div style="font-size:12px;color:'+typeColor+';">'+typeLabel+'</div>';
+        html += '</div><div style="text-align:left;"><div style="color:var(--primary);font-weight:900;font-size:14px;">'+sets+'</div>';
+        html += '<div style="font-size:11px;color:#ccc;">'+repText+'</div></div></div>';
+        html += '<div class="ex-toggle" onclick="toggleExp(\''+expId+'\')">📖 איך מבצעים?</div>';
+        html += '<div id="'+expId+'" class="ex-explanation">'+ex.exp+'</div></div>';
+    });
+    html += '<button onclick="finishWorkout()" style="width:100%;padding:20px;border-radius:12px;border:none;background:#fff;color:#000;font-weight:900;font-size:18px;margin-top:20px;cursor:pointer;font-family:inherit;">סיימתי! רשום לי התקדמות</button>';
+    resDiv.innerHTML = html;
+}
+function logWater() { appState.daily.water=(appState.daily.water||0)+0.25; saveState(); updateStats(); }
+function logMeal() {
+    var p=Number(document.getElementById('log-p').value); var c=Number(document.getElementById('log-c').value);
+    if(p>0||c>0){appState.daily.consumedP+=(p||0);appState.daily.consumedC+=(c||0);saveState();updateStats();document.getElementById('log-p').value='';document.getElementById('log-c').value='';}
+}
+function suggestNutrition() {
+    var raw=appState.ans.allergies||'';
+    var dis=raw.toLowerCase().split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>1&&s!=='אין'&&s!=='לא';});
+    var sf=FOODS.filter(function(f){return !dis.some(function(d){return f.n.toLowerCase().indexOf(d)!==-1;});});
+    var sm=MEALS.filter(function(m){return !dis.some(function(d){return m.n.toLowerCase().indexOf(d)!==-1;});});
+    document.getElementById('food-res').style.display='block';
+    document.getElementById('food-list-container').innerHTML=sf.slice().sort(function(){return 0.5-Math.random();}).slice(0,4).map(function(f){return '<div class="food-item"><strong>'+f.n+'</strong> <span style="color:#888;">| '+f.p+'g P | '+f.c+' Cal</span></div>';}).join('');
+    document.getElementById('meal-list-container').innerHTML=sm.slice().sort(function(){return 0.5-Math.random();}).slice(0,3).map(function(m){return '<div class="meal-item"><strong style="font-size:15px;color:#fff;">'+m.n+'</strong><br><span style="color:var(--primary);font-size:13px;">'+m.p+'g חלבון - '+m.c+' קלוריות</span></div>';}).join('');
+}
+
+// =============================================
+// DATA
+// =============================================
+var DB_KEY = 'cali_tree_nutri_exp_v1';
+var QUESTIONS = [
+    { id:"name",       q:"איך קוראים לך?",                        type:"text",   ph:"שם מלא" },
+    { id:"gender",     q:"מה המגדר שלך?",                         type:"select", opts:["גבר","אישה","אחר/לא משנה"] },
+    { id:"age",        q:"גיל:",                                   type:"number", ph:"גיל" },
+    { id:"weight",     q:"משקל (ק\"ג):",                          type:"number", ph:"לדוגמה: 75" },
+    { id:"height",     q:"גובה (ס\"מ):",                          type:"number", ph:"לדוגמה: 175" },
+    { id:"goal",       q:"מה היעד העיקרי שלך?",                   type:"select", opts:["חיטוב (Fat Loss)","מסה (Muscle Gain)","כוח (Strength)"] },
+    { id:"pace",       q:"באיזה קצב אתה רוצה תוצאות?",           type:"select", opts:["קצב רגיל (בריא ויציב)","אקסטרים (קורע את עצמי לתוצאות)"] },
+    { id:"level",      q:"מה הרמת קליסטניקס שלך?",               type:"select", opts:["אדמה (אפס מתח)","גזע (עושה קצת מתח)","ענפים (חזק, מחפש סקילים)"] },
+    { id:"water",      q:"יעד מים יומי (ליטר):",                  type:"number", ph:"למשל: 3" },
+    { id:"allergies",  q:"אלרגיות / מאכלים שנואים:",             type:"text",   ph:"למשל: חלב, בוטנים", sub:"אם אין, השאר ריק", optional:true },
+    { id:"gym_access", q:"איפה אתה מתאמן?",                       type:"select", opts:["קליסטניקס (פארק/רחוב)","סטודיו (משקולות ומתח)","מכון כושר מלא","בית"] },
+    { id:"has_pullup", q:"יש לך גישה למוט מתח?",                 type:"select", opts:["כן","לא"], cond:"gym_access=בית" },
+    { id:"has_dips",   q:"יש מקבילים (Dip Bars)?",               type:"select", opts:["כן","לא"], cond:"gym_access=בית" },
+    { id:"ready",      q:"מוכן להתחיל את המסע?",                  type:"select", opts:["כן, לגמרי!","תן בראש"] }
+];
+var TREE_NODES = [
+    { id:"basics",     name:"האדמה (Basics)", req:0,  icon:"🌱", desc:"שכיבות סמיכה, סקוואטים וחיזוק הליבה." },
+    { id:"lsit",       name:"L-Sit",           req:5,  icon:"🧘‍♂️", desc:"שליטה באגן ובטן מברזל." },
+    { id:"backlever",  name:"Back Lever",      req:15, icon:"🦇", desc:"כוח משיכה הפוך, כתפיים חזקות אחורה." },
+    { id:"muscleup",   name:"Muscle-Up",       req:25, icon:"🦅", desc:"המעבר מהמשיכה לדחיפה." },
+    { id:"frontlever", name:"Front Lever",     req:40, icon:"🪨", desc:"התנגדות לכוח המשיכה, גב רחב מפלדה." },
+    { id:"planche",    name:"Full Planche",    req:60, icon:"🛸", desc:"הצמרת. ריחוף באוויר על סמך כתפיים בלבד." }
+];
+var EXERCISES = [
+    { n:"שכיבות סמיכה יהלום",           m:"יד אחורית/חזה",    type:"rep",    skill:"basics",     exp:"הנח ידיים קרוב זו לזו בצורת יהלום מתחת לחזה. רד עד שהחזה נוגע בידיים ודחוף חזרה." },
+    { n:"שכיבות סמיכה רחבות",            m:"חזה/כתף",          type:"rep",    skill:"basics",     exp:"הנח ידיים רחב יותר מרוחב הכתפיים. רד לזווית 90 מעלות במרפקים ודחוף למעלה." },
+    { n:"סקוואט קופץ",                   m:"רגליים",            type:"rep",    skill:"basics",     exp:"בצע סקוואט רגיל, ומהתחתית התפוצץ לקפיצה. נחת ברכות ישירות לסקוואט הבא." },
+    { n:"לאנג'ים קופצים",               m:"רגליים",            type:"rep",    skill:"basics",     exp:"התחל ממכרע, קפוץ באוויר והחלף בין הרגליים לפני הנחיתה. גב ישר." },
+    { n:"פלאנק סטטי",                    m:"ליבה",              type:"rep",    skill:"basics",     exp:"הישען על האמות, גוף ישר מכף רגל ועד ראש. כווץ בטן וישבן." },
+    { n:"מתח קלאסי (Pull-ups)",          m:"גב/יד קדמית",      type:"rep",    skill:"basics",     reqEq:"pullup", exp:"אחוז במוט ברוחב הכתפיים, גב כף יד מופנה אליך. משוך עד שהסנטר עובר את המוט." },
+    { n:"מתח צ'ין-אפ (Chin-ups)",       m:"גב/יד קדמית",      type:"rep",    skill:"basics",     reqEq:"pullup", exp:"אחוז במוט כשכפות הידיים פונות אליך. משוך למעלה עם דגש על שרירי היד הקדמית." },
+    { n:"מקבילים (Dips)",               m:"חזה/יד אחורית",    type:"rep",    skill:"basics",     reqEq:"dips",   exp:"הישען על המקבילים, רד לאט לזווית 90 מעלות במרפק ודחוף חזרה." },
+    { n:"Tuck L-Sit (סטטי)",            m:"בטן",               type:"static", skill:"lsit",       exp:"תמוך בגוף על הידיים, הרם ברכיים לחזה והחזק את כל הגוף באוויר." },
+    { n:"הרמות רגליים מהרצפה",           m:"בטן תחתונה",        type:"rep",    skill:"lsit",       exp:"שכב על הגב, רגליים ישרות. הרם לזווית 90 מעלות והורד לאט מבלי לגעת ברצפה." },
+    { n:"Skin the Cat",                  m:"מוביליות",          type:"rep",    skill:"backlever",  reqEq:"pullup", exp:"היתלה על המוט, העבר את הרגליים בין הידיים אחורה עד למתיחה בכתף, וחזור." },
+    { n:"Tuck Back Lever (סטטי)",       m:"גב/כתף אחורית",    type:"static", skill:"backlever",  reqEq:"pullup", exp:"היתלה הפוך, קפל ברכיים לחזה והחזק את הגוף מקביל לקרקע כשהגב פונה מטה." },
+    { n:"מתח מתפרץ לחזה",               m:"גב עליון",          type:"rep",    skill:"muscleup",   reqEq:"pullup", exp:"משוך בעוצמה רבה ככל האפשר, במטרה לגעת עם החזה או הבטן במוט." },
+    { n:"Straight Bar Dips",             m:"חזה/יד אחורית",    type:"rep",    skill:"muscleup",   reqEq:"pullup", exp:"הישען על מוט ישר מלמעלה, רד עד שהחזה נוגע במוט ודחוף חזרה." },
+    { n:"Tuck Front Lever (סטטי)",      m:"גב/ליבה",           type:"static", skill:"frontlever", reqEq:"pullup", exp:"היתלה על המוט, קפל ברכיים לחזה ומשוך את הגוף למצב אופקי מקביל לקרקע." },
+    { n:"Ice Cream Makers",              m:"גב",                type:"rep",    skill:"frontlever", reqEq:"pullup", exp:"מהיתלות, משוך את עצמך למעלה ומיד דחוף את הגוף לאחור למצב פרונט לבר ישר." },
+    { n:"Tuck Planche (סטטי)",          m:"כתף קדמית",         type:"static", skill:"planche",    exp:"הישען על הידיים, קפל ברכיים לחזה ונתק את הרגליים. השען משקל קדימה על הכתפיים." },
+    { n:"שכיבות סמיכה בהישענות קדימה",  m:"כתף קדמית/חזה",   type:"rep",    skill:"planche",    exp:"שכיבות סמיכה כשהידיים קרוב למותניים והגוף נוטה קדימה להעמסת הכתפיים." },
+    { n:"עמידת ידיים כנגד קיר",          m:"כתפיים",            type:"static", skill:"planche",    exp:"טפס לעמידת ידיים כנגד קיר, והחזק גוף ישר לחלוטין ומכווץ." }
+];
+var FOODS = [
+    {n:"חזה עוף צלוי",p:31,c:165},{n:"קוטג' 5%",p:11,c:95},{n:"יוגורט פרו",p:20,c:120},{n:"ביצה קשה",p:7,c:75},
+    {n:"טונה במים",p:25,c:110},{n:"טופו צלוי",p:15,c:130},{n:"שקדים קלויים",p:6,c:160},{n:"חמאת בוטנים",p:4,c:95},
+    {n:"בשר בקר רזה",p:26,c:180},{n:"עדשים מבושלות",p:18,c:230}
+];
+var MEALS = [
+    {n:"חזה עוף + אורז בסמטי + סלט ירקות",p:40,c:500},
+    {n:"שקשוקה 3 ביצים + לחם כוסמין",p:28,c:450},
+    {n:"מוקפץ טופו וירקות עם אטריות סובה",p:25,c:420},
+    {n:"דייסת שיבולת שועל + חלבון מי גבינה",p:32,c:380},
+    {n:"סלט ענק עם טונה, ביצה קשה וטחינה",p:55,c:480}
+];
+
+// =============================================
+// STATE
+// =============================================
+var appState = (function(){
+    try { var s=localStorage.getItem(DB_KEY); return s?JSON.parse(s):null; } catch(e){return null;}
+})()||{done:false,ans:{},workoutsCompleted:0,unlockedSkills:['basics'],daily:{consumedP:0,consumedC:0,water:0,date:new Date().toDateString()}};
+
+function saveState(){ try{localStorage.setItem(DB_KEY,JSON.stringify(appState));}catch(e){} }
+
+function checkMidnight(){
+    var t=new Date().toDateString();
+    if(appState.daily.date!==t){appState.daily={consumedP:0,consumedC:0,water:0,date:t};saveState();}
+}
+
+function checkCond(q){
+    if(!q.cond) return true;
+    var p=q.cond.split('=');
+    return p.length===2&&appState.ans[p[0]]===p[1];
+}
+function getActive(){ return QUESTIONS.filter(function(q){return checkCond(q);}); }
+
+// =============================================
+// ONBOARDING
+// =============================================
+var currentStep = 0;
+
+function renderStep(){
+    var active=getActive(); var q=active[currentStep]; if(!q) return;
+    document.getElementById('progress-fill').style.width=((currentStep+1)/active.length*100)+'%';
+    document.getElementById('step-info').innerText='STEP '+(currentStep+1)+' OF '+active.length;
+    var h='<div class="q-title">'+q.q+'</div>';
+    if(q.sub) h+='<div class="q-sub">'+q.sub+'</div>';
+    if(q.type==='select'){
+        h+='<div class="options-list">';
+        q.opts.forEach(function(o){var sel=appState.ans[q.id]===o?' selected':'';h+='<div class="option-item'+sel+'" onclick="selectOpt(\''+q.id+'\',\''+o+'\')">'+o+'</div>';});
+        h+='</div>';
+    } else {
+        h+='<input type="'+q.type+'" id="q-val" value="'+(appState.ans[q.id]||'')+'" placeholder="'+(q.ph||'')+'" autocomplete="off">';
+    }
+    document.getElementById('question-box').innerHTML=h;
+    document.getElementById('btn-prev').style.visibility=currentStep===0?'hidden':'visible';
+    document.getElementById('btn-next').innerText=currentStep===getActive().length-1?'סיום':'המשך';
+}
+
+function moveStep(dir){
+    var active=getActive(); var q=active[currentStep]; if(!q) return;
+    if(dir===1&&q.type!=='select'){var el=document.getElementById('q-val');if(el) appState.ans[q.id]=el.value.trim();}
+    if(dir===1&&!q.optional&&!appState.ans[q.id]){alert('נא לענות.');return;}
+    appState.ans._step=currentStep; saveState();
+    currentStep+=dir;
+    if(currentStep<0){currentStep=0;renderStep();return;}
+    if(currentStep>=getActive().length){launchApp();}else{renderStep();}
+}
+
+function selectOpt(id,val){
+    appState.ans[id]=val; appState.ans._step=currentStep; saveState();
+    currentStep++;
+    if(currentStep>=getActive().length){launchApp();}else{renderStep();}
+}
+
+// =============================================
+// MAIN APP
+// =============================================
+function launchApp(){
+    if(appState.ans.level&&appState.ans.level.indexOf('ענפים')!==-1&&appState.workoutsCompleted===0){
+        appState.workoutsCompleted=16; appState.unlockedSkills=['basics','lsit','backlever'];
+    }
+    appState.done=true; saveState();
+    document.getElementById('onboarding-screen').style.transform='translateY(-100%)';
+    var app=document.getElementById('main-app');
+    app.style.display='block';
+    setTimeout(function(){app.style.opacity='1';},100);
+    document.getElementById('set-weight').value=appState.ans.weight||'';
+    document.getElementById('set-goal').value=appState.ans.goal||'חיטוב (Fat Loss)';
+    document.getElementById('set-pace').value=(appState.ans.pace||'').indexOf('אקסטרים')!==-1?'אקסטרים':'רגיל';
+    renderTree(); updateStats();
+}
+
+function updateStats(){
+    checkMidnight();
+    var ans=appState.ans; var isExtreme=(ans.pace||'').indexOf('אקסטרים')!==-1;
+    var tw=Number(ans.water)||3; var cw=appState.daily.water||0;
+    document.getElementById('ui-water').innerText=cw.toFixed(2)+' / '+tw+' L';
+    document.getElementById('water-progress').style.width=Math.min(100,(cw/tw)*100)+'%';
+    var weight=Number(ans.weight)||70; var gender=ans.gender||'גבר';
+    var bmr=weight*24+(gender==='גבר'?150:gender==='אישה'?-100:0);
+    var tdee=bmr*1.4; var goal=ans.goal||''; var mod=isExtreme?700:500;
+    var tc=goal.indexOf('חיטוב')!==-1?tdee-mod:goal.indexOf('מסה')!==-1?tdee+mod:tdee;
+    var tp=isExtreme&&goal.indexOf('חיטוב')!==-1?weight*2.2:weight*2;
+    document.getElementById('ui-p').innerText=Math.round(Math.max(0,tp-appState.daily.consumedP))+'g';
+    document.getElementById('ui-c').innerText=Math.round(Math.max(0,tc-appState.daily.consumedC));
+}
+
+function renderTree(){
+    document.getElementById('ui-workouts-done').innerText=appState.workoutsCompleted;
+    var html=''; var highestName=TREE_NODES[0].name.split(' ')[0];
+    TREE_NODES.forEach(function(node){
+        var unlocked=appState.unlockedSkills.indexOf(node.id)!==-1;
+        if(unlocked) highestName=node.name.split(' ')[0];
+        var remaining=Math.max(0,node.req-appState.workoutsCompleted);
+        var st=unlocked?'פתוח ✔️':'נפתח בעוד '+remaining+' אימונים';
+        html+='<div class="tree-node'+(unlocked?' unlocked':'')+'"><div class="node-icon">'+node.icon+'</div>';
+        html+='<div class="node-details"><div class="node-title">'+node.name+'</div>';
+        html+='<div style="font-size:11px;color:#aaa;margin-bottom:5px;">'+node.desc+'</div>';
+        html+='<div class="node-req">'+st+'</div></div></div>';
+    });
+    document.getElementById('tree-container').innerHTML='<div id="tree-progress"></div>'+html;
+    document.getElementById('header-level').innerText=highestName;
+    setTimeout(function(){
+        var maxReq=TREE_NODES[TREE_NODES.length-1].req;
+        var pct=Math.min(100,(appState.workoutsCompleted/maxReq)*100);
+        var tp=document.getElementById('tree-progress');
+        if(tp) tp.style.height=pct+'%';
+    },100);
+}
+
+// =============================================
+// INIT
+// =============================================
+window.onload = function(){
+    if(appState.done){launchApp();}
+    else{ if(appState.ans._step>0) currentStep=appState.ans._step; renderStep(); }
+};
+</script>
+</body>
+</html>
